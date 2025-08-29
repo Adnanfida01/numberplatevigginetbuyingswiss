@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vignette Demo</title>
+    <style>
+        body { font-family: Arial, sans-serif; background:#0f172a; color:#e2e8f0; margin:0; }
+        .container { max-width: 760px; margin: 40px auto; padding: 24px; background:#111827; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+        h1 { margin-top:0; font-weight: 700; letter-spacing:.5px; }
+        .row { display:flex; gap:16px; }
+        .row > div { flex:1; }
+        label { display:block; font-size:14px; color:#94a3b8; margin-bottom:6px; }
+        input, select { width:100%; padding:12px 14px; border-radius:8px; border:1px solid #334155; background:#0b1220; color:#e2e8f0; outline:none; }
+        input:focus, select:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.2); }
+        button { background:#2563eb; color:white; border:none; padding:12px 18px; border-radius:8px; cursor:pointer; font-weight:600; }
+        button:hover { background:#1e40af; }
+        .actions { display:flex; justify-content:flex-end; margin-top:18px; }
+        .muted { color:#94a3b8; font-size:12px; }
+        /* Progress overlay */
+        .overlay { position:fixed; inset:0; background:rgba(2,6,23,.85); display:none; align-items:center; justify-content:center; z-index:999; }
+        .overlay.show { display:flex; }
+        .card { background:#0b1220; padding:24px 28px; border-radius:12px; border:1px solid #1f2937; width: 90%; max-width: 460px; text-align:center; }
+        .spinner { width:36px; height:36px; border:3px solid #334155; border-top-color:#60a5fa; border-radius:50%; animation:spin 1s linear infinite; margin: 0 auto 12px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .step { font-size:14px; margin-top:6px; color:#cbd5e1; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Switzerland Vignette Demo</h1>
+        <p class="muted">Fill the details and we will simulate the official flow, then email you the checkout link.</p>
+        <form id="vignetteForm" action="/vignette/order" method="POST">
+            <div class="row">
+                <div>
+                    <label>Plate Number</label>
+                    <input type="text" name="plateNumber" placeholder="e.g. GF23WSN" required />
+                </div>
+                <div>
+                    <label>Start Date</label>
+                    <input type="date" name="startDate" required />
+                </div>
+            </div>
+
+            <div class="row" style="margin-top:12px;">
+                <div>
+                    <label>Vignette Type</label>
+            <select name="vignetteType">
+                <option value="annual">Annual</option>
+                <option value="monthly">Monthly</option>
+            </select>
+                </div>
+                <div>
+                    <label>Vehicle Type</label>
+            <select name="vehicleType">
+                <option value="car">Car</option>
+                        <option value="motorbike">Motorbike</option>
+                        <option value="caravan">Caravan</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="row" style="margin-top:12px;">
+                <div>
+                    <label>Email</label>
+                    <input type="email" name="email" placeholder="you@example.com" required />
+                </div>
+                <div>
+                    <label>Payment Method</label>
+                    <select name="paymentMethod" required>
+                        <option value="paypal">PayPal</option>
+                        <option value="creditcard">Creditcard</option>
+                        <option value="ideal">iDEAL</option>
+                        <option value="apple pay">Apple Pay</option>
+            </select>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button type="submit">Start Automation</button>
+            </div>
+    </form>
+    </div>
+
+    <div id="overlay" class="overlay">
+        <div class="card">
+            <div class="spinner"></div>
+            <div id="progressText">Starting the automation…</div>
+            <div class="step" id="stepText">Preparing browser</div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('vignetteForm');
+        const overlay = document.getElementById('overlay');
+        const progressText = document.getElementById('progressText');
+        const stepText = document.getElementById('stepText');
+
+        form.addEventListener('submit', () => {
+            overlay.classList.add('show');
+            progressText.textContent = 'Starting the automation…';
+            stepText.textContent = 'Preparing browser';
+            setTimeout(() => { progressText.textContent = 'Automation started'; stepText.textContent = 'Opening target site'; }, 1000);
+            setTimeout(() => { progressText.textContent = 'Almost there…'; stepText.textContent = 'Waiting for checkout link'; }, 6000);
+        });
+    </script>
+</body>
+</html>
