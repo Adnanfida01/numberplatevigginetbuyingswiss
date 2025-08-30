@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { fillSwissVignetteForm } = require('./puppeteer');
+const { sendConfirmationEmail } = require('./email');
 
 /**
  * API-First Service for Swiss Vignette Automation

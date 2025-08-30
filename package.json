@@ -7,23 +7,16 @@
     "dev": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [
-    "vignette",
-    "automation",
-    "switzerland",
-    "demo"
-  ],
+  "keywords": ["vignette", "automation", "switzerland", "demo", "via.admin.ch"],
   "author": "",
   "license": "ISC",
-  "description": "Demo project for automating Swiss vignette ordering with API-first approach",
+  "description": "Demo project for automating Swiss vignette ordering via via.admin.ch",
   "dependencies": {
-    "axios": "^1.11.0",
+    "axios": "^1.6.0",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "nodemailer": "^7.0.5",
-    "puppeteer": "^24.17.1",
-    "puppeteer-extra": "^3.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2"
+    "puppeteer": "^24.17.1"
   },
   "devDependencies": {
     "nodemon": "^3.0.0"
