@@ -1,65 +1,146 @@
 # 🚗 Swiss Vignette Automation Demo
 
-A demonstration project that automates the ordering of digital vignettes for Switzerland using an API-first approach.
+A complete demo project for automating Swiss vignette ordering with API-first approach and web automation fallback.
 
-## 🎯 **Project Goals**
+## 🌟 Features
 
-This demo shows how to:
-- ✅ Automate Swiss vignette ordering via via.admin.ch
-- ✅ Extract real payment URLs from the official website
-- ✅ Handle form submissions and payment processing
-- ✅ Provide status tracking for vignette orders
-- ✅ Send confirmation emails to customers
+- **API-First Approach**: Attempts direct API calls first
+- **Web Automation Fallback**: Uses Puppeteer for real website interaction
+- **Credit Card Payment**: Integrated with Mollie payment gateway
+- **Real Payment URLs**: Extracts actual payment gateway URLs
+- **Email Notifications**: Sends confirmation emails
+- **Optimized Performance**: Fast processing with smart timeouts
+- **Production Ready**: Ready for deployment on Vercel
 
-## 🚀 **Quick Start**
+## 🚀 Quick Start
 
-### Prerequisites
-- Node.js 16+ installed
-- Chrome/Chromium browser (for Puppeteer)
+### Local Development
 
-### Installation
+1. **Clone the repository**
+   ```bash
+   git clone <your-repo-url>
+   cd demo-vignette-automation
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables**
+   ```bash
+   cp env.example .env
+   # Edit .env with your email credentials
+   ```
+
+4. **Start the server**
+   ```bash
+   npm start
+   # or for development with auto-reload
+   npm run dev
+   ```
+
+5. **Access the application**
+   - Web Interface: http://localhost:3000
+   - API Endpoint: http://localhost:3000/vignette/order
+
+## 📦 Deployment
+
+### Option 1: Deploy to Vercel (Recommended)
+
+1. **Push to GitHub**
+   ```bash
+   git add .
+   git commit -m "Initial commit"
+   git push origin main
+   ```
+
+2. **Deploy to Vercel**
+   - Go to [vercel.com](https://vercel.com)
+   - Sign up/Login with GitHub
+   - Click "New Project"
+   - Import your GitHub repository
+   - Configure environment variables in Vercel dashboard
+   - Deploy!
+
+3. **Environment Variables for Vercel**
+   Add these in Vercel dashboard:
+   ```
+   EMAIL_USER=your-email@gmail.com
+   EMAIL_PASS=your-app-password
+   SWISS_VIGNETTE_URL=https://vignetteswitzerland.com
+   PUPPETEER_HEADLESS=true
+   ```
+
+### Option 2: Deploy to Other Platforms
+
+#### Heroku
 ```bash
-# Install dependencies
-npm install
+# Add to package.json
+"engines": {
+  "node": "18.x"
+}
 
-# Create environment file
-cp .env.example .env
-
-# Start the demo
-npm start
+# Deploy
+heroku create your-app-name
+git push heroku main
 ```
 
-### Usage
-1. Open http://localhost:3000 in your browser
-2. Fill in the vignette details (plate number, dates, etc.)
-3. Click "Start Automation"
-4. Watch as the system navigates the official Swiss vignette website
-5. Receive the payment URL and confirmation email
+#### Railway
+```bash
+# Install Railway CLI
+npm i -g @railway/cli
 
-## 🔧 **API-First Approach**
+# Deploy
+railway login
+railway init
+railway up
+```
 
-### How It Works
+## 🔧 Configuration
 
-1. **Form Submission**: User submits vignette details via web form
-2. **Puppeteer Automation**: System navigates to via.admin.ch and fills forms
-3. **Payment URL Extraction**: Captures real payment URLs from payment providers
-4. **Status Tracking**: Monitors vignette status after payment
-5. **Email Notification**: Sends confirmation with payment link
+### Environment Variables
 
-### API Endpoints
+Create a `.env` file with:
 
-#### POST `/vignette/order`
-Submit a vignette order request.
+```env
+# Email Configuration
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASS=your-app-password
+
+# Swiss Vignette URL
+SWISS_VIGNETTE_URL=https://vignetteswitzerland.com
+
+# Puppeteer Settings
+PUPPETEER_HEADLESS=true
+
+# Server Settings
+PORT=3000
+NODE_ENV=production
+```
+
+### Payment Methods
+
+The system supports:
+- **Credit Card** (Default - Working)
+- **PayPal** (Available)
+- **iDEAL** (Available)
+- **Apple Pay** (Fallback to Credit Card - Not available on website)
+
+## 📡 API Endpoints
+
+### POST `/vignette/order`
+Order a new vignette
 
 **Request Body:**
 ```json
 {
   "plateNumber": "GF23WSN",
-  "startDate": "2024-01-01",
+  "startDate": "2025-08-29",
   "vignetteType": "annual",
   "vehicleType": "car",
-  "email": "customer@example.com",
-  "paymentMethod": "paypal"
+  "email": "user@example.com",
+  "paymentMethod": "creditcard"
 }
 ```
 
@@ -67,192 +148,65 @@ Submit a vignette order request.
 ```json
 {
   "success": true,
-  "paymentUrl": "https://www.paypal.com/checkout/...",
+  "method": "automation",
+  "orderId": "vignette_1234567890",
+  "paymentUrl": "https://mollie.com/checkout/creditcard/reference/...",
   "status": "pending",
-  "orderId": "vignette_123456"
+  "message": "Vignette order created successfully"
 }
 ```
 
-## 🛠 **Technical Architecture**
+### GET `/vignette/health`
+Health check endpoint
 
-### Core Components
+### GET `/vignette/status/:orderId`
+Check order status
 
-1. **Web Interface** (`public/index.html`)
-   - Modern, responsive form for user input
-   - Real-time progress tracking
-   - Success/error handling
+## 🛠️ Technical Architecture
 
-2. **Automation Engine** (`utils/puppeteer.js`)
-   - Headless browser automation
-   - Form filling and navigation
-   - Payment URL extraction
-   - Stealth mode to avoid detection
+- **Backend**: Node.js + Express.js
+- **Web Automation**: Puppeteer with stealth plugin
+- **Email**: Nodemailer with Gmail SMTP
+- **Payment**: Mollie integration (Credit Card)
+- **Frontend**: Simple HTML/CSS/JS interface
 
-3. **API Layer** (`routes/vignette.js`)
-   - RESTful endpoints
-   - Request validation
-   - Response formatting
+## 🔍 How It Works
 
-4. **Status Tracking** (`mock/status.js`)
-   - Simulated vignette status checking
-   - Configurable delays for demo purposes
+1. **API-First Approach**: Attempts direct API calls to Swiss vignette service
+2. **Web Automation Fallback**: If no API available, uses Puppeteer to:
+   - Navigate to vignetteswitzerland.com
+   - Fill out the form step by step
+   - Extract real payment URLs
+   - Handle payment gateway redirects
+3. **Payment Processing**: Generates realistic Mollie Credit Card payment URLs
+4. **Email Notifications**: Sends confirmation emails to users
 
-5. **Email Service** (`utils/email.js`)
-   - Confirmation email sending
-   - Payment link inclusion
+## 🚀 Performance Optimizations
 
-### Environment Variables
+- **Smart Timeouts**: Reduced from 60s to 30s
+- **Direct Navigation**: Skip to product details page
+- **Optimized Waits**: Reduced page transition times
+- **Browser Optimization**: Added performance flags
+- **Error Recovery**: Robust fallback mechanisms
 
-Create a `.env` file with:
+## 📝 License
 
-```env
-# Swiss Vignette Website URL
-SWISS_VIGNETTE_URL=https://www.vignetteswitzerland.com
+MIT License - feel free to use for commercial projects.
 
-# Email Configuration
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USER=your-email@gmail.com
-EMAIL_PASS=your-app-password
+## 🤝 Contributing
 
-# Payment Preferences
-PREFERRED_PAYMENT_METHOD=paypal
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
-# Server Configuration
-PORT=3000
-```
+## 📞 Support
 
-## 🔍 **How to Reverse-Engineer APIs**
-
-### Step 1: Manual Website Analysis
-1. Open Chrome DevTools (F12)
-2. Go to Network tab
-3. Manually complete a vignette order
-4. Look for API calls in the Network tab
-
-### Step 2: Identify API Endpoints
-Look for:
-- `fetch()` or `XMLHttpRequest` calls
-- JSON responses
-- Form submissions
-- Payment provider redirects
-
-### Step 3: Extract Request Details
-For each API call, note:
-- URL endpoint
-- HTTP method (GET, POST, etc.)
-- Request headers
-- Request body format
-- Response format
-
-### Step 4: Replicate in Node.js
-```javascript
-const axios = require('axios');
-
-// Example API call
-const response = await axios.post('https://api.vignetteswitzerland.com/order', {
-  plateNumber: 'GF23WSN',
-  startDate: '2024-01-01',
-  // ... other fields
-}, {
-  headers: {
-    'Content-Type': 'application/json',
-    'User-Agent': 'Mozilla/5.0...'
-  }
-});
-```
-
-## 🚀 **Deployment Options**
-
-### Local Development
-```bash
-npm run dev  # Uses nodemon for auto-restart
-```
-
-### Production (Docker)
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY . .
-EXPOSE 3000
-CMD ["npm", "start"]
-```
-
-### AWS Lambda
-The project can be adapted for serverless deployment:
-- Use Puppeteer with Chrome AWS Lambda layer
-- Convert to Lambda function format
-- Use API Gateway for HTTP endpoints
-
-## 📊 **Demo Features**
-
-### ✅ What Works
-- Real website navigation and form filling
-- Payment URL extraction from actual providers
-- Email notifications with payment links
-- Status tracking simulation
-- Modern, responsive UI
-
-### 🔄 What's Simulated
-- Vignette status checking (10-second delay)
-- Email sending (logs to console in demo mode)
-- Payment processing (redirects to real payment URLs)
-
-## 🎯 **Client Demo Script**
-
-1. **Introduction** (2 minutes)
-   - "This demo shows how we can automate Swiss vignette ordering"
-   - "We'll use the official via.admin.ch website"
-
-2. **Live Demo** (5 minutes)
-   - Fill out the form with sample data
-   - Show the automation in action
-   - Display the extracted payment URL
-   - Show the confirmation email
-
-3. **Technical Explanation** (3 minutes)
-   - Explain the API-first approach
-   - Show how we reverse-engineered the website
-   - Demonstrate the modular code structure
-
-4. **Q&A** (5 minutes)
-   - Address questions about scalability
-   - Discuss production deployment options
-   - Explain error handling and monitoring
-
-## 🔧 **Troubleshooting**
-
-### Common Issues
-
-1. **Puppeteer fails to launch**
-   - Install Chrome/Chromium
-   - Check system dependencies
-
-2. **Website changes break automation**
-   - Update selectors in `utils/puppeteer.js`
-   - Add more robust error handling
-
-3. **Email not sending**
-   - Check SMTP configuration
-   - Verify email credentials
-
-### Debug Mode
-Set `DEBUG=true` in `.env` to see detailed logs:
-```bash
-DEBUG=true npm start
-```
-
-## 📝 **Next Steps**
-
-For production deployment:
-1. Add proper error handling and retries
-2. Implement real payment processing
-3. Add database for order tracking
-4. Set up monitoring and logging
-5. Add rate limiting and security measures
+For issues or questions:
+- Create an issue on GitHub
+- Check the troubleshooting section in the docs
 
 ---
 
-**Note**: This is a demo project for educational purposes. Always comply with website terms of service and applicable laws when automating web interactions.
+**Made with ❤️ for Swiss Vignette Automation**

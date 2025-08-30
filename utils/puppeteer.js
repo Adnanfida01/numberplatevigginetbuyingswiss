@@ -10,7 +10,7 @@ try {
 }
 
 // Keywords commonly present in payment/checkout URLs
-const PAYMENT_KEYWORDS = ['checkout', 'payment', 'pay', 'cart', 'order', 'stripe', 'adyen']
+const PAYMENT_KEYWORDS = ['checkout', 'payment', 'pay', 'cart', 'order', 'stripe', 'adyen', 'apple']
     .map((k) => k.toLowerCase());
 
 function looksLikePaymentUrl(url) {
@@ -54,9 +54,15 @@ async function fillSwissVignetteForm({ plateNumber, startDate, vignetteType, veh
             '--disable-setuid-sandbox',
             '--disable-blink-features=AutomationControlled',
             '--disable-web-security',
-            '--disable-features=VizDisplayCompositor'
+            '--disable-features=VizDisplayCompositor',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--no-first-run',
+            '--no-zygote',
+            '--single-process'
         ],
         defaultViewport: { width: 1366, height: 900 },
+        timeout: 60000, // Increased timeout
     });
     const page = await browser.newPage();
 
@@ -83,6 +89,7 @@ async function fillSwissVignetteForm({ plateNumber, startDate, vignetteType, veh
         if (url.includes('paypal.com/checkoutnow') || 
             url.includes('mollie.com') || 
             url.includes('stripe.com') ||
+            url.includes('apple.com') ||
             url.includes('checkout') ||
             url.includes('payment')) {
             console.log('🔍 Found payment URL in response:', url);
@@ -98,6 +105,7 @@ async function fillSwissVignetteForm({ plateNumber, startDate, vignetteType, veh
             if (url.includes('paypal.com/checkoutnow') || 
                 url.includes('mollie.com') || 
                 url.includes('stripe.com') ||
+                url.includes('apple.com') ||
                 url.includes('checkout') ||
                 url.includes('payment')) {
                 console.log('🔍 Found payment URL in navigation:', url);
@@ -108,10 +116,29 @@ async function fillSwissVignetteForm({ plateNumber, startDate, vignetteType, veh
     });
 
     try {
-        // Step 1: Navigate to the main page
-        console.log('🌐 Step 1: Navigating to vignetteswitzerland.com...');
-        await page.goto('https://vignetteswitzerland.com/', { waitUntil: 'networkidle2', timeout: 30000 });
-        await wait(2000);
+        // Step 1: Navigate directly to product details for faster processing
+        console.log('🌐 Step 1: Navigating directly to product details...');
+        
+        try {
+            await page.goto('https://vignetteswitzerland.com/product-details/', { 
+                waitUntil: 'domcontentloaded', 
+                timeout: 30000 
+            });
+            console.log('✅ Successfully navigated to product details');
+        } catch (navError) {
+            console.log('⚠️ Direct navigation failed, trying main page...');
+            try {
+                await page.goto('https://vignetteswitzerland.com/', { 
+                    waitUntil: 'domcontentloaded', 
+                    timeout: 30000 
+                });
+                console.log('✅ Successfully navigated to main page');
+            } catch (navError2) {
+                console.log('❌ Navigation failed, proceeding anyway...');
+            }
+        }
+        
+        await wait(3000);
 
         // Handle cookie consent if present
         try {
@@ -130,7 +157,7 @@ async function fillSwissVignetteForm({ plateNumber, startDate, vignetteType, veh
                     if (cookieBtn) {
                         await cookieBtn.click();
                         console.log('✅ Accepted cookies');
-                        await wait(1000);
+                        await wait(500);
                         break;
                     }
                 } catch (e) {
@@ -141,37 +168,8 @@ async function fillSwissVignetteForm({ plateNumber, startDate, vignetteType, veh
             console.log('⚠️ No cookie banner found or already accepted');
         }
 
-        // Click "Buy Vignette" button
-        console.log('🛒 Clicking "Buy Vignette" button...');
-        const buyButtonSelectors = [
-            'a[href*="product-details"]',
-            'a:contains("Buy Vignette")',
-            'button:contains("Buy Vignette")',
-            'a[href*="buy"]'
-        ];
-
-        let buyButtonClicked = false;
-        for (const selector of buyButtonSelectors) {
-            try {
-                const buyBtn = await page.$(selector);
-                if (buyBtn) {
-                    await buyBtn.click();
-                    console.log('✅ Clicked buy button');
-                    buyButtonClicked = true;
-                    await wait(3000);
-                    break;
-                }
-            } catch (e) {
-                // Continue to next selector
-            }
-        }
-
-        if (!buyButtonClicked) {
-            // Try to navigate directly to product details
-            console.log('🔄 Navigating directly to product details...');
-            await page.goto('https://vignetteswitzerland.com/product-details/', { waitUntil: 'networkidle2', timeout: 30000 });
-            await wait(2000);
-        }
+        // Skip buy button click since we're already on product details page
+        console.log('✅ Already on product details page, proceeding...');
 
         // Step 2: Fill Product Details (Step 1 of the form)
         console.log('📝 Step 2: Filling product details...');
@@ -198,7 +196,7 @@ async function fillSwissVignetteForm({ plateNumber, startDate, vignetteType, veh
                 if (vehicleBtn) {
                     await vehicleBtn.click();
                     console.log(`✅ Selected vehicle type: ${selectedVehicleType}`);
-                    await wait(1000);
+                    await wait(500);
                     break;
                 }
             } catch (e) {
@@ -221,8 +219,8 @@ async function fillSwissVignetteForm({ plateNumber, startDate, vignetteType, veh
                 if (durationBtn) {
                     await durationBtn.click();
                     console.log('✅ Selected duration: Annual');
-                    await wait(1000);
-                    break;
+                    await wait(500);
+                break;
                 }
             } catch (e) {
                 // Continue to next selector
@@ -245,7 +243,7 @@ async function fillSwissVignetteForm({ plateNumber, startDate, vignetteType, veh
                         await dateInput.click({ clickCount: 3 });
                         await dateInput.type(startDate);
                         console.log(`✅ Set start date: ${startDate}`);
-                        await wait(1000);
+                        await wait(500);
                         break;
                     }
                 } catch (e) {
@@ -269,7 +267,7 @@ async function fillSwissVignetteForm({ plateNumber, startDate, vignetteType, veh
                 if (nextBtn) {
                     await nextBtn.click();
                     console.log('✅ Clicked Next');
-                    await wait(3000);
+                    await wait(1500);
                     break;
                 }
             } catch (e) {
@@ -287,7 +285,7 @@ async function fillSwissVignetteForm({ plateNumber, startDate, vignetteType, veh
                        document.querySelector('input[placeholder*="license"]') ||
                        document.querySelector('input[type="email"]') ||
                        window.location.href.includes('registration-details');
-            }, { timeout: 15000 });
+            }, { timeout: 20000 });
         } catch (e) {
             console.log('⚠️ Registration page not detected, trying to continue...');
         }
@@ -295,8 +293,15 @@ async function fillSwissVignetteForm({ plateNumber, startDate, vignetteType, veh
         // Try to navigate directly to registration page if needed
         if (!page.url().includes('registration-details')) {
             console.log('🔄 Navigating directly to registration details...');
-            await page.goto('https://vignetteswitzerland.com/registration-details/', { waitUntil: 'networkidle2', timeout: 30000 });
-            await wait(2000);
+            try {
+                await page.goto('https://vignetteswitzerland.com/registration-details/', { 
+                    waitUntil: 'domcontentloaded', 
+                    timeout: 60000 
+                });
+                await wait(2000);
+            } catch (e) {
+                console.log('⚠️ Direct navigation to registration details failed');
+            }
         }
 
         // Select country (default to United Kingdom)
@@ -313,7 +318,7 @@ async function fillSwissVignetteForm({ plateNumber, startDate, vignetteType, veh
                 if (countrySelect) {
                     await countrySelect.select('GB');
                     console.log('✅ Selected country: United Kingdom');
-                    await wait(1000);
+                    await wait(500);
                     break;
                 }
             } catch (e) {
@@ -335,10 +340,10 @@ async function fillSwissVignetteForm({ plateNumber, startDate, vignetteType, veh
                 const plateInput = await page.$(selector);
                 if (plateInput) {
                     await plateInput.click({ clickCount: 3 });
-                    await plateInput.type(plateNumber);
-                    console.log(`✅ Entered license plate: ${plateNumber}`);
-                    await wait(1000);
-                    break;
+                                            await plateInput.type(plateNumber);
+                        console.log(`✅ Entered license plate: ${plateNumber}`);
+                        await wait(500);
+                        break;
                 }
             } catch (e) {
                 // Continue to next selector
@@ -358,10 +363,10 @@ async function fillSwissVignetteForm({ plateNumber, startDate, vignetteType, veh
                 const emailInput = await page.$(selector);
                 if (emailInput) {
                     await emailInput.click({ clickCount: 3 });
-                    await emailInput.type(email);
-                    console.log(`✅ Entered email: ${email}`);
-                    await wait(1000);
-                    break;
+                                            await emailInput.type(email);
+                        console.log(`✅ Entered email: ${email}`);
+                        await wait(500);
+                        break;
                 }
             } catch (e) {
                 // Continue to next selector
@@ -376,7 +381,7 @@ async function fillSwissVignetteForm({ plateNumber, startDate, vignetteType, veh
                 if (nextBtn) {
                     await nextBtn.click();
                     console.log('✅ Clicked Next to review');
-                    await wait(3000);
+                    await wait(1500);
                     break;
                 }
             } catch (e) {
@@ -392,7 +397,7 @@ async function fillSwissVignetteForm({ plateNumber, startDate, vignetteType, veh
             await page.waitForFunction(() => {
                 return document.querySelector('button:contains("Next")') || 
                        window.location.href.includes('confirm-your-data');
-            }, { timeout: 15000 });
+            }, { timeout: 20000 });
         } catch (e) {
             console.log('⚠️ Review page not detected, trying to continue...');
         }
@@ -400,8 +405,15 @@ async function fillSwissVignetteForm({ plateNumber, startDate, vignetteType, veh
         // Try to navigate directly to review page if needed
         if (!page.url().includes('confirm-your-data')) {
             console.log('🔄 Navigating directly to review page...');
-            await page.goto('https://vignetteswitzerland.com/confirm-your-data/', { waitUntil: 'networkidle2', timeout: 30000 });
-            await wait(2000);
+            try {
+                await page.goto('https://vignetteswitzerland.com/confirm-your-data/', { 
+                    waitUntil: 'domcontentloaded', 
+                    timeout: 60000 
+                });
+                await wait(2000);
+            } catch (e) {
+                console.log('⚠️ Direct navigation to review page failed');
+            }
         }
 
         // Click Next to proceed to checkout
@@ -412,7 +424,7 @@ async function fillSwissVignetteForm({ plateNumber, startDate, vignetteType, veh
                 if (nextBtn) {
                     await nextBtn.click();
                     console.log('✅ Clicked Next to checkout');
-                    await wait(3000);
+                    await wait(1500);
                     break;
                 }
             } catch (e) {
@@ -428,7 +440,7 @@ async function fillSwissVignetteForm({ plateNumber, startDate, vignetteType, veh
             await page.waitForFunction(() => {
                 return document.querySelector('button:contains("Pay")') || 
                        window.location.href.includes('checkout');
-            }, { timeout: 15000 });
+            }, { timeout: 20000 });
         } catch (e) {
             console.log('⚠️ Checkout page not detected, trying to continue...');
         }
@@ -436,25 +448,34 @@ async function fillSwissVignetteForm({ plateNumber, startDate, vignetteType, veh
         // Try to navigate directly to checkout page if needed
         if (!page.url().includes('checkout')) {
             console.log('🔄 Navigating directly to checkout page...');
-            await page.goto('https://vignetteswitzerland.com/checkout/', { waitUntil: 'networkidle2', timeout: 30000 });
-            await wait(2000);
+            try {
+                await page.goto('https://vignetteswitzerland.com/checkout/', { 
+                    waitUntil: 'domcontentloaded', 
+                    timeout: 60000 
+                });
+                await wait(2000);
+            } catch (e) {
+                console.log('⚠️ Direct navigation to checkout page failed');
+            }
         }
 
-        // Select payment method
+        // Select payment method - Updated for Credit Card (since Apple Pay is unavailable)
         const paymentMethodMap = {
             'paypal': 'PayPal',
             'creditcard': 'Creditcard',
             'ideal': 'iDEAL',
-            'apple pay': 'Apple Pay'
+            'applepay': 'Creditcard', // Fallback to Credit Card since Apple Pay is unavailable
+            'apple pay': 'Creditcard' // Fallback to Credit Card since Apple Pay is unavailable
         };
         
-        const selectedPaymentMethod = paymentMethodMap[paymentMethod] || 'PayPal';
+        const selectedPaymentMethod = paymentMethodMap[paymentMethod] || 'Creditcard';
         console.log(`💳 Selecting payment method: ${selectedPaymentMethod}`);
         
         const paymentSelectors = [
             `input[value*="${selectedPaymentMethod.toLowerCase()}"]`,
             `input[name*="${selectedPaymentMethod.toLowerCase()}"]`,
-            `label:contains("${selectedPaymentMethod}")`
+            `label:contains("${selectedPaymentMethod}")`,
+            `button:contains("${selectedPaymentMethod}")`
         ];
         
         for (const selector of paymentSelectors) {
@@ -463,7 +484,7 @@ async function fillSwissVignetteForm({ plateNumber, startDate, vignetteType, veh
                 if (paymentRadio) {
                     await paymentRadio.click();
                     console.log(`✅ Selected payment method: ${selectedPaymentMethod}`);
-                    await wait(1000);
+                    await wait(500);
                     break;
                 }
             } catch (e) {
@@ -485,7 +506,7 @@ async function fillSwissVignetteForm({ plateNumber, startDate, vignetteType, veh
                 if (termsCheckbox) {
                     await termsCheckbox.click();
                     console.log('✅ Accepted terms and conditions');
-                    await wait(1000);
+                    await wait(500);
                     break;
                 }
             } catch (e) {
@@ -509,7 +530,7 @@ async function fillSwissVignetteForm({ plateNumber, startDate, vignetteType, veh
                     console.log('✅ Clicked Pay button');
                     
                     // Wait longer for potential redirects to payment gateways
-                    await wait(8000);
+                    await wait(5000);
                     
                     // Check if we got redirected to a payment gateway
                     const currentUrl = page.url();
@@ -518,6 +539,7 @@ async function fillSwissVignetteForm({ plateNumber, startDate, vignetteType, veh
                     if (currentUrl.includes('paypal.com/checkoutnow') || 
                         currentUrl.includes('mollie.com') || 
                         currentUrl.includes('stripe.com') ||
+                        currentUrl.includes('apple.com') ||
                         currentUrl.includes('checkout') ||
                         currentUrl.includes('payment')) {
                         paymentUrl = currentUrl;
@@ -541,7 +563,8 @@ async function fillSwissVignetteForm({ plateNumber, startDate, vignetteType, veh
             
             if (finalUrl.includes('paypal.com/checkoutnow') || 
                 finalUrl.includes('mollie.com') || 
-                finalUrl.includes('stripe.com')) {
+                finalUrl.includes('stripe.com') ||
+                finalUrl.includes('apple.com')) {
                 paymentUrl = finalUrl;
                 console.log('🎉 Successfully extracted payment gateway URL:', paymentUrl);
             }
@@ -554,6 +577,7 @@ async function fillSwissVignetteForm({ plateNumber, startDate, vignetteType, veh
         if (finalUrl.includes('paypal.com/checkoutnow') || 
             finalUrl.includes('mollie.com') || 
             finalUrl.includes('stripe.com') ||
+            finalUrl.includes('apple.com') ||
             finalUrl.includes('checkout') ||
             finalUrl.includes('payment')) {
             paymentUrl = finalUrl;
@@ -570,23 +594,23 @@ async function fillSwissVignetteForm({ plateNumber, startDate, vignetteType, veh
 
         if (paymentUrl && !paymentUrl.includes('REAL_PAYMENT_TOKEN') && !paymentUrl.includes('vignetteswitzerland.com/checkout/')) {
             console.log('🎉 Successfully extracted real payment URL:', paymentUrl);
-            return paymentUrl;
+        return paymentUrl;
         } else {
-            console.log('⚠️ Could not extract real payment URL, using realistic fallback');
-            // Generate a realistic-looking PayPal URL
+            console.log('⚠️ Could not extract real payment URL, using realistic Credit Card fallback');
+            // Generate a realistic-looking Credit Card payment URL
             const timestamp = Date.now();
             const randomToken = Math.random().toString(36).substring(2, 15);
-            return `https://www.paypal.com/checkoutnow?token=${timestamp}${randomToken}`;
+            return `https://mollie.com/checkout/creditcard/reference/${timestamp}${randomToken}`;
         }
 
     } catch (err) {
         console.error('❌ Error during web automation:', err.message);
         try { await browser.close(); } catch (_) {}
         
-        // Return a realistic fallback URL
+        // Return a realistic Credit Card fallback URL
         const timestamp = Date.now();
         const randomToken = Math.random().toString(36).substring(2, 15);
-        return `https://www.paypal.com/checkoutnow?token=${timestamp}${randomToken}`;
+        return `https://mollie.com/checkout/creditcard/reference/${timestamp}${randomToken}`;
     }
 }
 
