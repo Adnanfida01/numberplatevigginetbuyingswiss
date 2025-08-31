@@ -1,19 +1,7 @@
 // Vercel-compatible Puppeteer configuration
-// Prefer puppeteer-extra with stealth; fall back to vanilla puppeteer if not installed
-let puppeteer;
-let puppeteerExtra;
-let StealthPlugin;
-
-try {
-  puppeteerExtra = require('puppeteer-extra');
-  StealthPlugin = require('puppeteer-extra-plugin-stealth');
-  puppeteerExtra.use(StealthPlugin());
-  puppeteer = puppeteerExtra;
-  console.log('🤖 Using puppeteer-extra with stealth plugin');
-} catch (error) {
-  console.log('⚠️ Stealth plugin not available, using vanilla puppeteer');
-  puppeteer = require('puppeteer');
-}
+// Using vanilla puppeteer for Vercel compatibility
+const puppeteer = require('puppeteer');
+console.log('🤖 Using vanilla puppeteer for Vercel compatibility');
 
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
