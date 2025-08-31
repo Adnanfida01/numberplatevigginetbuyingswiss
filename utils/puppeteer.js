@@ -74,7 +74,7 @@ async function fillSwissVignetteForm(orderDetails) {
       waitUntil: ['domcontentloaded', 'load'],
       timeout: 30000 
     });
-    await wait(2000);
+    await wait(3000);
 
     // Handle cookie consent if present
     try {
@@ -87,61 +87,72 @@ async function fillSwissVignetteForm(orderDetails) {
       console.log('No cookie consent found or already accepted');
     }
 
-    console.log('🌐 Step 2: Clicking "Buy" button for E-vignette...');
-    const buyButton = await page.waitForSelector('button:contains("Buy"), a:contains("Buy"), [data-testid="buy-button"]', { timeout: 10000 });
+    console.log('🌐 Step 2: Looking for E-vignette product and Buy button...');
+    
+    // Look for the E-vignette product card and its Buy button
+    // Based on the screenshots, we need to find the product with "E-vignette 2025" text
+    const evignetteCard = await page.waitForSelector('text="E-vignette 2025", text="E-vignette", [data-testid*="evignette"], .product-card', { timeout: 15000 });
+    
+    // Find the Buy button within the E-vignette card or nearby
+    const buyButton = await page.waitForSelector('button:contains("Buy"), a:contains("Buy"), [data-testid="buy-button"], .buy-button, button[type="button"]', { timeout: 15000 });
+    
+    console.log('🎯 Found Buy button, clicking...');
     await buyButton.click();
     await wait(3000);
 
     console.log('🌐 Step 3: Filling vehicle information...');
     
-    // Select vehicle category (Motor vehicle)
-    const vehicleCategory = await page.waitForSelector('[data-testid="vehicle-category"], .vehicle-category, button:contains("Motor vehicle")', { timeout: 10000 });
+    // Wait for the configurator page to load
+    await page.waitForSelector('text="Configurator E-Vignette", text="Please enter your vehicle information", [data-testid="configurator"]', { timeout: 15000 });
+    
+    // Select vehicle category (Motor vehicle) - look for car icon or text
+    const vehicleCategory = await page.waitForSelector('text="Motor vehicle", [data-testid="vehicle-category"], .vehicle-category, button:contains("Motor vehicle"), img[alt*="car"], img[alt*="vehicle"]', { timeout: 15000 });
     await vehicleCategory.click();
-    await wait(1000);
+    await wait(1500);
 
     // Select country of registration (Switzerland)
-    const countrySelector = await page.waitForSelector('[data-testid="country-selector"], .country-selector, button:contains("Select country")', { timeout: 10000 });
+    const countrySelector = await page.waitForSelector('text="Select country", [data-testid="country-selector"], .country-selector, button:contains("Select country")', { timeout: 15000 });
     await countrySelector.click();
-    await wait(1000);
+    await wait(1500);
     
-    const switzerlandOption = await page.waitForSelector('option:contains("Switzerland"), button:contains("Switzerland"), [data-value="CH"]', { timeout: 10000 });
+    const switzerlandOption = await page.waitForSelector('text="Switzerland", option:contains("Switzerland"), button:contains("Switzerland"), [data-value="CH"], [data-value="Switzerland"]', { timeout: 15000 });
     await switzerlandOption.click();
-    await wait(1000);
+    await wait(1500);
 
-    // Fill registration number
-    const regNumberInput = await page.waitForSelector('input[placeholder*="registration"], input[name*="registration"], [data-testid="registration-number"]', { timeout: 10000 });
+    // Fill registration number - look for input fields
+    const regNumberInput = await page.waitForSelector('input[placeholder*="registration"], input[name*="registration"], [data-testid="registration-number"], input[type="text"]', { timeout: 15000 });
     await regNumberInput.type(orderDetails.plateNumber);
-    await wait(500);
+    await wait(1000);
 
     // Fill repeat registration number
-    const repeatRegInput = await page.waitForSelector('input[placeholder*="repeat"], input[name*="repeat"], [data-testid="repeat-registration"]', { timeout: 10000 });
+    const repeatRegInput = await page.waitForSelector('input[placeholder*="repeat"], input[name*="repeat"], [data-testid="repeat-registration"], input[type="text"]:nth-of-type(2)', { timeout: 15000 });
     await repeatRegInput.type(orderDetails.plateNumber);
-    await wait(1000);
+    await wait(1500);
 
     // Uncheck "Publicly viewable" if present
     try {
-      const publicCheckbox = await page.$('input[type="checkbox"][name*="public"], [data-testid="publicly-viewable"]');
+      const publicCheckbox = await page.$('input[type="checkbox"][name*="public"], [data-testid="publicly-viewable"], input[type="checkbox"]');
       if (publicCheckbox && await publicCheckbox.isChecked()) {
         await publicCheckbox.click();
-        await wait(500);
+        await wait(1000);
       }
     } catch (e) {
       console.log('Publicly viewable checkbox not found or already unchecked');
     }
 
     console.log('🌐 Step 4: Adding to cart...');
-    const addToCartButton = await page.waitForSelector('button:contains("Add to cart"), [data-testid="add-to-cart"]', { timeout: 10000 });
+    const addToCartButton = await page.waitForSelector('text="Add to cart", [data-testid="add-to-cart"], button:contains("Add to cart"), button[type="submit"]', { timeout: 15000 });
     await addToCartButton.click();
-    await wait(2000);
+    await wait(3000);
 
     // Handle "Publicly viewable" popup if it appears
     try {
-      const popup = await page.$('.modal, .popup, [role="dialog"]');
+      const popup = await page.$('.modal, .popup, [role="dialog"], .dialog');
       if (popup) {
-        const skipButton = await page.$('button:contains("Continue without"), button:contains("Skip"), button:contains("No")');
+        const skipButton = await page.$('text="Continue without", text="Skip", text="No", button:contains("Continue without"), button:contains("Skip")');
         if (skipButton) {
           await skipButton.click();
-          await wait(1000);
+          await wait(2000);
         }
       }
     } catch (e) {
@@ -149,12 +160,12 @@ async function fillSwissVignetteForm(orderDetails) {
     }
 
     console.log('🌐 Step 5: Proceeding to checkout...');
-    const checkoutButton = await page.waitForSelector('button:contains("Checkout"), [data-testid="checkout"]', { timeout: 10000 });
+    const checkoutButton = await page.waitForSelector('text="Checkout", [data-testid="checkout"], button:contains("Checkout"), a:contains("Checkout")', { timeout: 15000 });
     await checkoutButton.click();
-    await wait(3000);
+    await wait(5000);
 
     // Wait for redirect to payment page
-    await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 15000 });
+    await page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 20000 });
     
     // Get the final URL
     const currentUrl = page.url();
