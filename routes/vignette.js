@@ -163,6 +163,41 @@ router.get('/discover', async (req, res) => {
     }
 });
 
+// Validity check endpoint (simulated)
+router.post('/check-validity', async (req, res) => {
+    const { plateNumber } = req.body;
+    
+    try {
+        console.log(`🔍 Checking validity for plate: ${plateNumber}`);
+        
+        // Simulate validity check - in real implementation, you would:
+        // 1. Navigate to the official check page
+        // 2. Enter the plate number
+        // 3. Scrape the result
+        
+        // For now, return a simulated response
+        const isValid = Math.random() > 0.3; // 70% chance of being valid
+        const validUntil = isValid ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString() : null;
+        
+        res.json({
+            success: true,
+            plateNumber,
+            valid: isValid,
+            validUntil: validUntil,
+            message: isValid ? 'Vignette is valid' : 'Vignette not found or expired',
+            timestamp: new Date().toISOString()
+        });
+        
+    } catch (error) {
+        console.error('❌ Error checking validity:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
 // Health check endpoint
 router.get('/health', (req, res) => {
     res.json({

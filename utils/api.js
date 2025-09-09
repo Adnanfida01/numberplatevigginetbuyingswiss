@@ -105,6 +105,9 @@ class VignetteAPIService {
         
         try {
             const paymentUrl = await fillSwissVignetteForm(orderData);
+            if (!paymentUrl) {
+                throw new Error('Real payment URL not captured in time');
+            }
             
             return {
                 success: true,

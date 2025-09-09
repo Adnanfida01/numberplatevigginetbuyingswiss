@@ -1,25 +1,31 @@
-# 🚗 Swiss Vignette Automation Demo
+# 🚗 Swiss Vignette Automation Bot
 
-A complete demo project for automating Swiss vignette ordering with API-first approach and web automation fallback.
+A fully automated bot for purchasing Swiss e-vignettes from via.admin.ch with real payment URL extraction.
 
 ## 🌟 Features
 
-- **API-First Approach**: Attempts direct API calls first
-- **Web Automation Fallback**: Uses Puppeteer for real website interaction
-- **Credit Card Payment**: Integrated with Mollie payment gateway
-- **Real Payment URLs**: Extracts actual payment gateway URLs
-- **Email Notifications**: Sends confirmation emails
-- **Optimized Performance**: Fast processing with smart timeouts
-- **Production Ready**: Ready for deployment on Vercel
+- **Fully Automated**: Complete end-to-end automation of Swiss e-vignette purchase
+- **Real Payment URLs**: Extracts actual payment gateway URLs from via.admin.ch
+- **Headless Operation**: Runs completely in background (no browser windows)
+- **Multi-Language Support**: Handles both German and English interfaces
+- **Robust Error Handling**: Multiple fallback strategies for reliable operation
+- **Production Ready**: Optimized for server deployment
+- **Real-time Logging**: Detailed progress tracking and debugging
 
 ## 🚀 Quick Start
 
-### Local Development
+### Prerequisites
+
+- **Node.js** (v18 or higher)
+- **npm** or **yarn**
+- **Git**
+
+### Installation
 
 1. **Clone the repository**
    ```bash
-   git clone <your-repo-url>
-   cd demo-vignette-automation
+   git clone https://github.com/Adnanfida01/swiss-vignette-automation.git
+   cd swiss-vignette-automation
    ```
 
 2. **Install dependencies**
@@ -27,22 +33,29 @@ A complete demo project for automating Swiss vignette ordering with API-first ap
    npm install
    ```
 
-3. **Set up environment variables**
+3. **Install Puppeteer (if not already installed)**
    ```bash
-   cp env.example .env
-   # Edit .env with your email credentials
+   npm install puppeteer
+   # or if you need to install Chromium separately
+   npx puppeteer browsers install chrome
    ```
 
-4. **Start the server**
+4. **Set up environment variables**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
+
+5. **Start the server**
    ```bash
    npm start
    # or for development with auto-reload
    npm run dev
    ```
 
-5. **Access the application**
+6. **Access the application**
    - Web Interface: http://localhost:3000
-   - API Endpoint: http://localhost:3000/vignette/order
+   - API Endpoint: http://localhost:3000/api/vignette/order
 
 ## 📦 Deployment
 
