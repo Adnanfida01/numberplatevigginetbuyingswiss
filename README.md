@@ -223,3 +223,201 @@ For issues or questions:
 ---
 
 **Made with ❤️ for Swiss Vignette Automation**
+
+---
+
+### Swiss Vignette Automation Bot
+
+#### Overview
+Swiss Vignette Automation Bot automates the Swiss e‑vignette process on `via.admin.ch`:
+- Purchases an e‑vignette and captures the real payment URL
+- Checks license plate validity using the official API
+- Runs headless for servers, Docker, and serverless (Vercel)
+
+Tech stack:
+- Node.js, Express, dotenv
+- Puppeteer (vanilla)
+- Axios
+
+#### Features
+- Automatic vignette purchase flow (resilient navigation + retries)
+- Extracts real checkout URL (e.g., `pajar.bazg.admin.ch/checkout/.../selection`)
+- Validity check via official API (`/shop/api/v1/vehicle/query-license-plate`)
+- Headless Chrome with safe flags for restricted environments
+- Clear logging with ✅, ⚠️, ❌ markers
+
+---
+
+### Installation
+
+Prerequisites:
+- Node.js >= 18 (tested on Node 22)
+- npm
+
+Steps:
+1) Clone
+```bash
+git clone <your-repo-url>
+cd swiss-vignette-automation
+```
+2) Install deps
+```bash
+npm install
+```
+3) Configure env
+```bash
+cp env.example .env
+```
+Edit `.env` (template):
+```env
+PORT=3000
+NODE_ENV=production
+# Optional for serverless/Docker chromium path
+# PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+# Optional demo base URL for utils/api.js discovery
+# SWISS_VIGNETTE_URL=https://www.vignetteswitzerland.com
+```
+4) Run
+```bash
+npm start
+# Server: http://localhost:3000
+```
+
+---
+
+### Configuration
+- Express app: `index.js` (serves `public/` and mounts `/vignette` routes)
+- Puppeteer is headless with flags:
+  - `--no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage --disable-accelerated-2d-canvas --no-first-run --no-zygote --disable-gpu`
+- Optional: set `PUPPETEER_EXECUTABLE_PATH` for serverless builds
+
+---
+
+### Usage
+
+#### Place an order (automation + payment URL capture)
+Endpoint: `POST /vignette/order`
+
+Request body:
+```json
+{
+  "plateNumber": "ZH123456",
+  "startDate": "2025-09-10",
+  "vignetteType": "annual",
+  "vehicleType": "car",
+  "email": "you@example.com",
+  "paymentMethod": "creditcard"
+}
+```
+
+Response (example):
+```json
+{
+  "success": true,
+  "method": "automation",
+  "orderId": "vignette_1694350987654",
+  "paymentUrl": "https://pajar.bazg.admin.ch/checkout/.../selection",
+  "status": "pending",
+  "message": "Vignette order created successfully",
+  "timestamp": "2025-09-10T12:34:56.789Z"
+}
+```
+
+Curl example:
+```bash
+curl -X POST http://localhost:3000/vignette/order \
+  -H "Content-Type: application/json" \
+  -d '{
+    "plateNumber":"ZH123456",
+    "startDate":"2025-09-10",
+    "vignetteType":"annual",
+    "vehicleType":"car",
+    "email":"you@example.com",
+    "paymentMethod":"creditcard"
+  }'
+```
+
+#### Check validity (official API)
+Endpoint: `POST /vignette/check-validity`
+
+Request body:
+```json
+{ "plateNumber": "ZH123456" }
+```
+
+Response (examples):
+```json
+{ "success": true, "plateNumber": "ZH123456", "valid": true, "message": "valid", "timestamp": "..." }
+```
+or
+```json
+{ "success": true, "plateNumber": "ZH123456", "valid": false, "message": "invalid", "timestamp": "..." }
+```
+
+The bot calls:
+```
+PUT https://via.admin.ch/shop/api/v1/vehicle/query-license-plate
+{
+  "country": "CH",
+  "plate": "ZH123456",
+  "productType": "E_VIGNETTE"
+}
+```
+
+#### Other endpoints
+- `GET /vignette/status/:orderId` – demo status checker
+- `GET /vignette/discover` – demo API discovery
+- `GET /vignette/health` – health check
+
+#### Logs
+- Console includes step-by-step logs with:
+  - ✅ success, ⚠️ warning, ❌ error
+- Browser console is piped into Node logs during automation for debugging
+
+---
+
+### Deployment
+
+Any Node host (PM2, Docker) or serverless (Vercel):
+- Ensure Chromium available or set `PUPPETEER_EXECUTABLE_PATH`
+- Keep headless flags for sandboxed environments
+- Increase cold-start timeouts in serverless if needed
+
+Vercel:
+- Project includes `vercel.json`
+- Configure environment variables in dashboard
+
+Docker tips:
+- Consider `--shm-size=1g` to avoid `/dev/shm` issues
+- Use the included headless flags
+
+---
+
+### Troubleshooting
+- Timeouts (navigation/selectors)
+  - The bot retries navigation and refreshes; ensure network stability and raise timeouts if needed
+- No payment URL detected
+  - Checkout may take time; the bot listens for redirect URLs and checks after navigation
+- Plate format
+  - Input should be normalized (no spaces, hyphens, dots). The validity API call normalizes automatically
+- CSP/headless blanks
+  - Rarely, pages render blank in headless; the bot refreshes and validates content length
+
+---
+
+### Project Structure
+- `index.js`: Express bootstrap
+- `routes/vignette.js`: API routes (order, validity, status, discover, health)
+- `utils/puppeteer.js`: Purchase automation and API-based validity checker
+- `utils/api.js`: API-first scaffolding, discovery helpers, fallback to automation
+- `utils/email.js`: Mock email helper for confirmation
+- `public/`: Minimal dashboard UI
+- `vercel.json`: Optional deployment config
+
+### Security & Disclaimer
+- For educational/demo use only; not affiliated with Swiss authorities
+- Ensure compliance with applicable laws and website terms
+- Do not commit secrets; use environment variables
+
+### License
+ISC (see `package.json`)

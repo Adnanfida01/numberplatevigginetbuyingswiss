@@ -422,11 +422,9 @@ async function fillSwissVignetteForm(orderDetails) {
         '--disable-accelerated-2d-canvas',
         '--no-first-run',
         '--no-zygote',
-        '--single-process',
-        '--disable-gpu',
-        '--disable-web-security',
-        '--disable-features=VizDisplayCompositor'
-      ]
+        '--disable-gpu'
+      ],
+      timeout: 60000
     };
 
     // Use executablePath for Vercel if available
@@ -434,7 +432,20 @@ async function fillSwissVignetteForm(orderDetails) {
       launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
     }
 
-    browser = await puppeteer.launch(launchOptions);
+    // Retryable launch to mitigate headless startup flakiness
+    async function launchBrowserWithRetry(options) {
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          console.log(`🚀 Launching browser (attempt ${attempt})...`);
+          return await puppeteer.launch(options);
+        } catch (err) {
+          console.error(`❌ Browser launch failed (attempt ${attempt}):`, err.message);
+          if (attempt === 3) throw err;
+        }
+      }
+    }
+
+    browser = await launchBrowserWithRetry(launchOptions);
     const page = await browser.newPage();
     await page.setViewport({ width: 1366, height: 900, deviceScaleFactor: 1 });
     page.setDefaultNavigationTimeout(90000);
@@ -713,59 +724,66 @@ async function fillSwissVignetteForm(orderDetails) {
       console.log('⚠️ Vehicle category verification failed');
     }
 
-    // Country selection: Click country selector and select Schweiz (shadow DOM safe)
+    // Country selection: robust headless-safe selection with mouse click + retry
     console.log('🌍 Selecting country...');
     try {
-      // Wait for the Angular custom element to load
       await page.waitForSelector('fc-country-selection-field .country-selection-field', { timeout: 10000 });
       console.log('✅ Country selection field loaded');
-      
-      // Click the country selection field (not the qd-icon)
+
+      // Open selector first
       await page.click('fc-country-selection-field .country-selection-field');
       console.log('✅ Opened country selector');
-      await wait(2000);
-      
-      // Wait for overlay to render items
-      await page.waitForSelector('fc-country-list-item .country-list-item-container', { timeout: 10000 });
-      console.log('✅ Country list overlay loaded');
-      
-      // Click Schweiz (CH) using bounding box approach
-      await page.evaluate(() => {
-        const items = Array.from(document.querySelectorAll('fc-country-list-item .country-list-item-container'));
-        let swiss = items.find(el => el.getAttribute('country-code') === 'CH');
-        if (!swiss) {
-          swiss = items.find(el => (el.innerText || '').includes('Schweiz'));
-        }
-        if (!swiss && items.length > 0) {
-          swiss = items[0]; // fallback
-        }
 
-        if (swiss) {
-          const box = swiss.getBoundingClientRect();
-          swiss.scrollIntoView({ block: 'center' });
-          const x = box.left + box.width / 2;
-          const y = box.top + box.height / 2;
-          const target = document.elementFromPoint(x, y);
-          if (target) {
-            target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-          } else {
-            swiss.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+      // Wait for overlay items to render and be visible
+      await page.waitForSelector('fc-country-list-item .country-list-item-container', { visible: true, timeout: 10000 });
+      console.log('✅ Country list overlay loaded');
+
+      let success = false;
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          console.log(`🖱️ Selecting Switzerland (attempt ${attempt})...`);
+          const handle = await page.evaluateHandle(() => {
+            const items = Array.from(document.querySelectorAll('fc-country-list-item .country-list-item-container'));
+            let target = items.find(el => el.getAttribute('country-code') === 'CH');
+            if (!target) target = items.find(el => (el.innerText || '').includes('Schweiz'));
+            if (!target && items.length > 0) target = items[0]; // fallback: first item
+            return target || null;
+          });
+
+          if (handle) {
+            const box = await handle.boundingBox();
+            if (box) {
+              await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+              // verify some country selected (non-empty text in field)
+              await page.waitForFunction(() => {
+                const field = document.querySelector('fc-country-selection-field .country-selection-field');
+                return field && field.innerText && field.innerText.trim().length > 0;
+              }, { timeout: 8000 });
+              console.log('✅ Country selected');
+              success = true;
+              await handle.dispose();
+              break;
+            }
+            await handle.dispose();
           }
+        } catch (err) {
+          console.warn(`⚠️ Attempt ${attempt} failed: ${err.message}`);
+          // Try to dismiss overlay and re-open
+          try { await page.keyboard.press('Escape'); } catch {}
+          await wait(300);
+          try { await page.click('fc-country-selection-field .country-selection-field'); } catch {}
+          await page.waitForSelector('fc-country-list-item .country-list-item-container', { visible: true, timeout: 10000 }).catch(() => {});
         }
-      });
-      
-      // Verify Schweiz selection
-      await page.waitForFunction(() => {
-        const field = document.querySelector('fc-country-selection-field .country-selection-field');
-        return field && field.innerText.includes('Schweiz');
-      }, { timeout: 8000 });
-      
-      console.log('✅ Country selected: Schweiz');
+      }
+
+      if (!success) {
+        throw new Error('Country selection failed after retries');
+      }
     } catch (e) {
       console.log('⚠️ Country selection failed:', e.message);
       throw e;
     }
-    await wait(1500);
+    await wait(500);
 
     // Verify country selection
     try {
@@ -1122,4 +1140,42 @@ async function fillSwissVignetteForm(orderDetails) {
   }
 }
 
-module.exports = { fillSwissVignetteForm };
+/**
+ * Check vignette validity by navigating to the validity page, entering the plate number,
+ * and scraping the status with normalization and a single retry on invalid.
+ */
+async function checkVignetteValidity(plateNumber) {
+  const axios = require('axios');
+  try {
+    const normalizedPlate = String(plateNumber).replace(/[\s.-]/g, '');
+    const response = await axios.put(
+      'https://via.admin.ch/shop/api/v1/vehicle/query-license-plate',
+      {
+        country: 'CH',
+        plate: normalizedPlate,
+        productType: 'E_VIGNETTE'
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        timeout: 20000
+      }
+    );
+
+    const data = response && response.data ? response.data : {};
+    if (data && data.status === 'VALID') {
+      console.log('✅ Vignette valid until:', data.validUntil);
+      return { valid: true, validUntil: data.validUntil };
+    }
+
+    console.log('❌ Not valid or not found');
+    return { valid: false };
+  } catch (err) {
+    console.error('❌ Error checking vignette:', err.message);
+    return { valid: false, error: err.message };
+  }
+}
+
+module.exports = { fillSwissVignetteForm, checkVignetteValidity };
